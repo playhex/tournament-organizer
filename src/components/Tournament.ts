@@ -340,6 +340,25 @@ export class Tournament {
         }
     }
 
+    /**
+     * In double elimination, both grand final players are sent to the grand final reset,
+     * which must only be played if the player coming from the losers bracket won the grand final.
+     * Returns true when the grand final has been won by the winners bracket champion.
+     */
+    #isUnneededGrandFinalReset(match: Match, winnerID: string | null): boolean {
+        if (match.path.win === null || match.path.win !== match.path.loss) {
+            return false;
+        }
+        const reset = this.#match(match.path.win);
+        if (reset.path.win !== null || reset.path.loss !== null) {
+            return false;
+        }
+        // Winners final is the only match leading to the grand final which has a loss path
+        const winnersFinal = mustFind(this.matches, m => m.id !== match.id && m.path.win === match.id && m.path.loss !== null, `winners final leading to match ${match.id}`);
+        const winnersChampion = winnersFinal.player1.win > winnersFinal.player2.win ? winnersFinal.player1.id : winnersFinal.player2.id;
+        return winnerID === winnersChampion;
+    }
+
     #computeScores(): Array<StandingsValues> {
         const playerScores = this.players.map(player => ({
             player: player,
@@ -607,11 +626,11 @@ export class Tournament {
     /** 
      * Start the tournament.
      * 
-     * Throws an error if there are an insufficient number of players (4 if double elimination, otherwise 2).
+     * Throws an error if there are an insufficient number of players (less than 2).
      */
     start(): void {
         const players = this.players.filter(p => p.active === true);
-        if ((this.stageOne.format === 'double-elimination' && players.length < 4) || players.length < 2) {
+        if (players.length < 2) {
             throw `Insufficient number of players (${players.length}) to start event`;
         }
         if (this.sorting !== 'none') {
@@ -656,7 +675,7 @@ export class Tournament {
                     standings.splice(0, this.stageTwo.advance.value);
                     standings.forEach(s => this.#player(s.player.id).active = false);
                 }
-                if ((this.stageTwo.format === 'double-elimination' && this.players.filter(player => player.active === true).length < 4) || this.players.filter(player => player.active === true).length < 2) {
+                if (this.players.filter(player => player.active === true).length < 2) {
                     throw `Insufficient number of players (${this.players.filter(player => player.active === true).length}) to create stage two matches`;
                 }
                 this.#createMatches(this.standings().map(s => s.player).filter(p => p.active === true));
@@ -716,8 +735,13 @@ export class Tournament {
             loss: player1Wins,
             draw: draws
         });
+        const winID = player1Wins > player2Wins ? match.player1.id : match.player2.id;
+        const lossID = player1Wins > player2Wins ? match.player2.id : match.player1.id;
+        if (this.#isUnneededGrandFinalReset(match, winID)) {
+            this.#player(lossID).values = { active: false };
+            return;
+        }
         if (match.path.win !== null) {
-            const winID = player1Wins > player2Wins ? match.player1.id : match.player2.id;
             const winMatch = this.#match(match.path.win);
             if (winMatch.player1.id === null) {
                 winMatch.values = {
@@ -746,7 +770,6 @@ export class Tournament {
                 });
             }
         }
-        const lossID = player1Wins > player2Wins ? match.player2.id : match.player1.id;
         if (match.path.loss !== null) {
             const lossMatch = this.#match(match.path.loss);
             if (lossMatch.player1.id === null) {

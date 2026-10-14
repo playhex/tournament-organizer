@@ -10,6 +10,25 @@ export function DoubleElimination(players: number | string[], startingRound: num
     } else {
         playerArray = [...new Array(players)].map((_, i) => i + 1);
     }
+    if (playerArray.length === 2) {
+        const [round, gf, reset] = [startingRound, startingRound + 1, startingRound + 2];
+        return [
+            // Winners final: both players go to the grand final, the loser with one loss
+            { round, match: 1, player1: playerArray[0], player2: playerArray[1], win: { round: gf, match: 1 }, loss: { round: gf, match: 1 } },
+            { round: gf, match: 1, player1: null, player2: null, win: { round: reset, match: 1 }, loss: { round: reset, match: 1 } },
+            { round: reset, match: 1, player1: null, player2: null },
+        ];
+    }
+    if (playerArray.length === 3) {
+        const [round, gf, reset, losers] = [startingRound, startingRound + 2, startingRound + 3, startingRound + 4];
+        return [
+            { round, match: 1, player1: playerArray[1], player2: playerArray[2], win: { round: round + 1, match: 1 }, loss: { round: losers, match: 1 } },
+            { round: round + 1, match: 1, player1: playerArray[0], player2: null, win: { round: gf, match: 1 }, loss: { round: losers, match: 1 } },
+            { round: gf, match: 1, player1: null, player2: null, win: { round: reset, match: 1 }, loss: { round: reset, match: 1 } },
+            { round: reset, match: 1, player1: null, player2: null },
+            { round: losers, match: 1, player1: null, player2: null, win: { round: gf, match: 1 } },
+        ];
+    }
     const exponent = Math.log2(playerArray.length);
     const remainder = Math.round(2 ** exponent) % (2 ** Math.floor(exponent));
     const bracket = [1, 4, 2, 3];
@@ -298,5 +317,19 @@ export function DoubleElimination(players: number | string[], startingRound: num
         round: roundDiff,
         match: 1
     };
+    // Insert the grand final reset right after the grand final, shifting the losers bracket by one round.
+    // Both grand final players go to the reset, which is only played if the losers bracket player wins the grand final.
+    matches.forEach(m => {
+        [m, m.win, m.loss].forEach(target => {
+            if (target !== undefined && target.round > roundDiff) {
+                target.round++;
+            }
+        });
+    });
+    const reset = { round: roundDiff + 1, match: 1 };
+    const grandFinal = mustFind(matches, m => m.round === roundDiff, `grand final in round ${roundDiff}`);
+    grandFinal.win = { ...reset };
+    grandFinal.loss = { ...reset };
+    matches.push({ ...reset, player1: null, player2: null });
     return matches;
 }

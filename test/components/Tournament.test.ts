@@ -47,8 +47,8 @@ describe('Tournament', () => {
         it('refuses to start without enough players', () => {
             const tournament = withPlayers(1);
             expect(thrown(() => tournament.start())).to.equal('Insufficient number of players (1) to start event');
-            const doubleElim = withPlayers(3, { stageOne: { format: 'double-elimination' } });
-            expect(thrown(() => doubleElim.start())).to.equal('Insufficient number of players (3) to start event');
+            const doubleElim = withPlayers(1, { stageOne: { format: 'double-elimination' } });
+            expect(thrown(() => doubleElim.start())).to.equal('Insufficient number of players (1) to start event');
         });
     });
 
@@ -401,6 +401,140 @@ describe('Tournament', () => {
             }
             expect(guard).to.be.lessThan(20);
             expect(tournament.players.filter(p => p.active === true)).to.have.lengthOf(1);
+        });
+    });
+
+    describe('double elimination with few players', () => {
+        /** Enters a result in the only active match, won by the given player. */
+        const win = (tournament: Tournament, winner: string): void => {
+            const active = tournament.matches.filter(m => m.active === true);
+            expect(active).to.have.lengthOf(1);
+            const [match] = active;
+            expect([match.player1.id, match.player2.id]).to.include(winner);
+            tournament.enterResult(match.id, match.player1.id === winner ? 1 : 0, match.player1.id === winner ? 0 : 1);
+        };
+        const losses = (tournament: Tournament, id: string): number => tournament.players.find(p => p.id === id)!.matches.reduce((sum, m) => sum + (m.loss > m.win ? 1 : 0), 0);
+        const played = (tournament: Tournament, id: string): number => tournament.players.find(p => p.id === id)!.matches.length;
+        const activePlayers = (tournament: Tournament): string[] => tournament.players.filter(p => p.active === true).map(p => p.id);
+        const grandFinalReset = (tournament: Tournament) => tournament.matches.find(m => m.path.win === null && m.path.loss === null)!;
+
+        it('starts with 2 players: winners final, grand final, and grand final reset', () => {
+            const tournament = withPlayers(2, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            expect(tournament.matches).to.have.lengthOf(3);
+            expect(tournament.stageOne.rounds).to.equal(3);
+            expect(tournament.matches.filter(m => m.active === true)).to.have.lengthOf(1);
+        });
+
+        it('2 players: the winners bracket champion wins in 2 matches', () => {
+            const tournament = withPlayers(2, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            win(tournament, 'p1');
+            // The loser lost once, so still plays the grand final.
+            expect(activePlayers(tournament)).to.have.members(['p1', 'p2']);
+            win(tournament, 'p1');
+            expect(activePlayers(tournament)).to.deep.equal(['p1']);
+            expect(played(tournament, 'p1')).to.equal(2);
+            expect(losses(tournament, 'p2')).to.equal(2);
+            const reset = grandFinalReset(tournament);
+            expect(reset.active).to.equal(false);
+            expect([reset.player1.id, reset.player2.id]).to.deep.equal([null, null]);
+            expect(tournament.matches.some(m => m.active === true)).to.equal(false);
+        });
+
+        it('2 players: the grand final is reset when the losers bracket player wins it', () => {
+            const tournament = withPlayers(2, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            win(tournament, 'p1');
+            win(tournament, 'p2');
+            // Both lost once: grand final reset is played.
+            expect(activePlayers(tournament)).to.have.members(['p1', 'p2']);
+            const reset = grandFinalReset(tournament);
+            expect(reset.active).to.equal(true);
+            expect([reset.player1.id, reset.player2.id]).to.have.members(['p1', 'p2']);
+            win(tournament, 'p2');
+            expect(activePlayers(tournament)).to.deep.equal(['p2']);
+            expect(played(tournament, 'p2')).to.equal(3);
+            expect(losses(tournament, 'p1')).to.equal(2);
+            expect(tournament.matches.some(m => m.active === true)).to.equal(false);
+        });
+
+        it('3 players: the winners bracket champion wins the grand final', () => {
+            const tournament = withPlayers(3, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            const [first] = tournament.matches.filter(m => m.active === true);
+            const [a, b] = [first.player1.id!, first.player2.id!];
+            const [c] = ['p1', 'p2', 'p3'].filter(p => p !== a && p !== b);
+            win(tournament, a); // winners bracket round 1
+            win(tournament, c); // winners final
+            win(tournament, a); // losers final: b is eliminated
+            expect(activePlayers(tournament)).to.have.members([a, c]);
+            expect(losses(tournament, b)).to.equal(2);
+            win(tournament, c); // grand final
+            expect(activePlayers(tournament)).to.deep.equal([c]);
+            expect(losses(tournament, a)).to.equal(2);
+            expect(grandFinalReset(tournament).active).to.equal(false);
+            expect(tournament.matches.some(m => m.active === true)).to.equal(false);
+        });
+
+        it('3 players: the grand final is reset when the losers bracket player wins it', () => {
+            const tournament = withPlayers(3, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            const [first] = tournament.matches.filter(m => m.active === true);
+            const [a, b] = [first.player1.id!, first.player2.id!];
+            const [c] = ['p1', 'p2', 'p3'].filter(p => p !== a && p !== b);
+            win(tournament, a);
+            win(tournament, c);
+            win(tournament, b); // losers final: a is eliminated
+            win(tournament, b); // grand final, won by losers bracket player
+            expect(grandFinalReset(tournament).active).to.equal(true);
+            win(tournament, b); // grand final reset
+            expect(activePlayers(tournament)).to.deep.equal([b]);
+            expect(losses(tournament, a)).to.equal(2);
+            expect(losses(tournament, c)).to.equal(2);
+            expect(tournament.matches.some(m => m.active === true)).to.equal(false);
+        });
+
+        it('clears the grand final result and the reset with it', () => {
+            const tournament = withPlayers(2, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            win(tournament, 'p1');
+            win(tournament, 'p2');
+            const grandFinal = tournament.matches.find(m => m.path.win === grandFinalReset(tournament).id)!;
+            tournament.clearResult(grandFinal.id);
+            const reset = grandFinalReset(tournament);
+            expect(reset.active).to.equal(false);
+            expect([reset.player1.id, reset.player2.id]).to.deep.equal([null, null]);
+            expect(grandFinal.active).to.equal(true);
+            win(tournament, 'p1');
+            expect(activePlayers(tournament)).to.deep.equal(['p1']);
+        });
+
+        it('eliminates every player after exactly two losses, whatever the number of players', () => {
+            let seed = 42;
+            const random = (): number => {
+                seed = (seed * 1103515245 + 12345) % 2147483648;
+                return seed / 2147483648;
+            };
+            for (let count = 2; count <= 20; count++) {
+                for (let run = 0; run < 5; run++) {
+                    const tournament = withPlayers(count, { stageOne: { format: 'double-elimination' } });
+                    tournament.start();
+                    let guard = 0;
+                    while (tournament.matches.some(m => m.active === true) && guard++ < 100) {
+                        const match = tournament.matches.find(m => m.active === true)!;
+                        const player1Wins = random() < 0.5;
+                        tournament.enterResult(match.id, player1Wins ? 1 : 0, player1Wins ? 0 : 1);
+                    }
+                    expect(guard, `${count} players`).to.be.lessThan(100);
+                    const [champion] = activePlayers(tournament);
+                    expect(activePlayers(tournament), `${count} players`).to.have.lengthOf(1);
+                    expect(losses(tournament, champion), `${count} players, champion`).to.be.at.most(1);
+                    tournament.players.filter(p => p.id !== champion).forEach(p => {
+                        expect(losses(tournament, p.id), `${count} players, ${p.id}`).to.equal(2);
+                    });
+                }
+            }
         });
     });
 
