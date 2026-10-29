@@ -1,4 +1,3 @@
-import randomstring from 'randomstring';
 import { LoadableTournamentValues } from '../interfaces/LoadableTournamentValues.js';
 import { Match } from './Match.js';
 import { Tournament } from './Tournament.js';
@@ -29,10 +28,7 @@ export class Manager {
         let ID = id;
         if (ID === undefined) {
             do {
-                ID = randomstring.generate({
-                    length: 12,
-                    charset: 'alphanumeric'
-                });
+                ID = crypto.randomUUID();
             } while (this.tournaments.some(t => t.id === ID));
         } else {
             if (this.tournaments.some(t => t.id === ID)) {

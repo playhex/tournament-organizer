@@ -10,7 +10,7 @@ describe('Manager', () => {
         const manager = new Manager();
         const tournament = manager.createTournament('First');
         expect(tournament.name).to.equal('First');
-        expect(tournament.id).to.have.lengthOf(12);
+        expect(tournament.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
         expect(manager.tournaments).to.deep.equal([tournament]);
     });
 
