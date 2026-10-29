@@ -44,6 +44,8 @@ Changes made in this fork since [tournament-organizer 3.9.1](https://github.com/
   Swiss pairings use [`edmonds-blossom-fixed`](https://www.npmjs.com/package/edmonds-blossom-fixed).
 - `types` field fixed (`./dist/index.d.ts` instead of `./dist/index.d.js`).
 - `prepare` script, so that installing from git builds `dist/`.
+- Built with `tsc` only: no more rollup browser (`dist/index.module.js`) and UMD (`dist/index.umd.js`) bundles.
+  Use a bundler, or a CDN that bundles ES modules like [esm.sh](https://esm.sh).
 
 ### Added
 - Double elimination with 2 or 3 players (the original requires at least 4).
@@ -80,7 +82,7 @@ import TournamentOrganizer from '@playhex/tournament-organizer';
 
 In the browser:
 ```js
-import TournamentOrganizer from "https://esm.sh/@playhex/tournament-organizer/dist/index.module.js";
+import TournamentOrganizer from "https://esm.sh/@playhex/tournament-organizer";
 ```
 
 ## Documentation
