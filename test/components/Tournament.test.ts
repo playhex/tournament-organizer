@@ -736,6 +736,35 @@ describe('Tournament', () => {
             expect([final.player1.id, final.player2.id]).to.include(wronglyEliminated);
         });
 
+        it('returns the matches updated by entering and clearing a result', () => {
+            const tournament = withPlayers(4);
+            tournament.start();
+            const [first, second] = tournament.matches.filter(m => m.round === 1);
+            const final = tournament.matches.find(m => m.round === 2)!;
+            expect(tournament.enterResult(first.id, 1, 0)).to.deep.equal([first, final]);
+            expect(tournament.enterResult(second.id, 1, 0)).to.deep.equal([second, final]);
+            expect(tournament.clearResult(first.id)).to.deep.equal([first, final]);
+        });
+
+        it('returns the matches updated in both brackets of a double elimination', () => {
+            const tournament = withPlayers(4, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            const match = tournament.matches.find(m => m.active === true)!;
+            const updated = tournament.enterResult(match.id, 1, 0);
+            expect(updated.map(m => m.id)).to.deep.equal([match.id, match.path.win, match.path.loss]);
+        });
+
+        it('only returns the grand final when the grand final reset is not needed', () => {
+            const tournament = withPlayers(2, { stageOne: { format: 'double-elimination' } });
+            tournament.start();
+            const winnersFinal = tournament.matches.find(m => m.active === true)!;
+            tournament.enterResult(winnersFinal.id, 1, 0);
+            const winnersChampion = winnersFinal.player1.id;
+            const grandFinal = tournament.matches.find(m => m.active === true)!;
+            const [player1Wins, player2Wins] = grandFinal.player1.id === winnersChampion ? [1, 0] : [0, 1];
+            expect(tournament.enterResult(grandFinal.id, player1Wins, player2Wins)).to.deep.equal([grandFinal]);
+        });
+
         it('gives a forfeit win to the opponent when a player is removed mid-match', () => {
             const tournament = withPlayers(4);
             tournament.start();

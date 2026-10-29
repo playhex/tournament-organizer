@@ -685,8 +685,10 @@ export class Tournament {
      * @param player1Wins Number of wins for player one
      * @param player2Wins Number of wins for player two
      * @param draws Number of draws
+     * @returns Array of matches that were updated
      */
-    enterResult(id: string, player1Wins: number, player2Wins: number, draws: number = 0): void {
+    enterResult(id: string, player1Wins: number, player2Wins: number, draws: number = 0): Array<Match> {
+        const updatedMatches: Array<Match> = [];
         const match = this.matches.find(m => m.id === id);
         if (match === undefined) {
             throw `Match with ID ${id} does not exist`;
@@ -707,6 +709,7 @@ export class Tournament {
                 draw: draws
             }
         };
+        updatedMatches.push(match);
         const player1 = this.#player(match.player1.id);
         player1.updateMatch(match.id, {
             win: player1Wins,
@@ -723,10 +726,11 @@ export class Tournament {
         const lossID = player1Wins > player2Wins ? match.player2.id : match.player1.id;
         if (this.#isUnneededGrandFinalReset(match, winID)) {
             this.#player(lossID).values = { active: false };
-            return;
+            return updatedMatches;
         }
         if (match.path.win !== null) {
             const winMatch = this.#match(match.path.win);
+            updatedMatches.push(winMatch);
             if (winMatch.player1.id === null) {
                 winMatch.values = {
                     player1: {
@@ -756,6 +760,7 @@ export class Tournament {
         }
         if (match.path.loss !== null) {
             const lossMatch = this.#match(match.path.loss);
+            updatedMatches.push(lossMatch);
             if (lossMatch.player1.id === null) {
                 lossMatch.values = {
                     player1: {
@@ -786,6 +791,7 @@ export class Tournament {
         } else if ((this.status === 'stage-one' && ['single-elimination', 'double-elimination', 'stepladder'].includes(this.stageOne.format)) || this.status === 'stage-two') {
             this.#player(lossID).values = { active: false };
         }
+        return updatedMatches;
     }
 
     /**
@@ -795,8 +801,10 @@ export class Tournament {
      * 
      * In elimination and stepladder formats, it reverses the progression of players in the bracket.
      * @param id The ID of the match
+     * @returns Array of matches that were updated
      */
-    clearResult(id: string): void {
+    clearResult(id: string): Array<Match> {
+        const updatedMatches: Array<Match> = [];
         const match = this.matches.find(m => m.id === id);
         if (match === undefined) {
             throw `Match with ID ${id} does not exist`;
@@ -814,6 +822,7 @@ export class Tournament {
                 draw: 0
             }
         }
+        updatedMatches.push(match);
         const player1 = this.#player(match.player1.id);
         const player2 = this.#player(match.player2.id);
         player1.values = { active: true };
@@ -843,6 +852,7 @@ export class Tournament {
                     id: winMatch.player2.id === player1.id || winMatch.player2.id === player2.id ? null : winMatch.player2.id
                 }
             }
+            updatedMatches.push(winMatch);
         }
         if (match.path.loss !== null) {
             const lossMatch = this.#match(match.path.loss);
@@ -859,7 +869,9 @@ export class Tournament {
                     id: lossMatch.player2.id === player1.id || lossMatch.player2.id === player2.id ? null : lossMatch.player2.id
                 }
             }
+            updatedMatches.push(lossMatch);
         }
+        return updatedMatches;
     }
 
     /**
