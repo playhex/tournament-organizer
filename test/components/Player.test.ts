@@ -33,6 +33,25 @@ describe('Player', () => {
         expect(player.matches.map(m => m.id)).to.deep.equal(['m1', 'm2']);
     });
 
+    it('updates matches already in the record when setting values', () => {
+        const player = new Player('abc', 'Alice');
+        player.addMatch({ id: 'm1', opponent: 'def' });
+        player.values = {
+            matches: [{
+                id: 'm1',
+                opponent: 'def',
+                pairUpDown: false,
+                seating: null,
+                bye: false,
+                win: 1,
+                loss: 0,
+                draw: 0
+            }]
+        };
+        expect(player.matches).to.have.lengthOf(1);
+        expect(player.matches[0].win).to.equal(1);
+    });
+
     it('fills in defaults when adding a match', () => {
         const player = new Player('abc', 'Alice');
         player.addMatch({ id: 'm1', opponent: 'def' });

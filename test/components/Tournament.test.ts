@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { Match } from '../../src/components/Match.js';
+import { Player } from '../../src/components/Player.js';
 import { Tournament } from '../../src/components/Tournament.js';
 import { thrown } from '../helpers.js';
 
@@ -270,6 +272,38 @@ describe('Tournament', () => {
             tournament.settings = { stageOne: { rounds: 5 } };
             expect(tournament.stageOne.format).to.equal('swiss');
             expect(tournament.stageOne.rounds).to.equal(5);
+        });
+
+        it('updates players already in the tournament instead of duplicating them', () => {
+            const tournament = withPlayers(2);
+            const player = tournament.players[0];
+            const updated = new Player('p1', 'Renamed');
+            updated.values = { value: 1500 };
+            tournament.settings = { players: [updated, new Player('p3', 'Player 3')] };
+            expect(tournament.players.map(p => p.id)).to.deep.equal(['p1', 'p2', 'p3']);
+            expect(tournament.players[0]).to.equal(player);
+            expect(player.name).to.equal('Renamed');
+            expect(player.value).to.equal(1500);
+        });
+
+        it('updates matches already in the tournament instead of duplicating them', () => {
+            const tournament = withPlayers(4);
+            tournament.start();
+            const match = tournament.matches[0];
+            const updated = new Match(match.id, match.round, match.match);
+            updated.values = {
+                active: false,
+                player1: { id: match.player1.id, win: 1 },
+                player2: { id: match.player2.id, loss: 1 },
+                path: { ...match.path }
+            };
+            const count = tournament.matches.length;
+            tournament.settings = { matches: [updated] };
+            expect(tournament.matches).to.have.lengthOf(count);
+            expect(tournament.matches[0]).to.equal(match);
+            expect(match.active).to.equal(false);
+            expect(match.player1.win).to.equal(1);
+            expect(match.player2.loss).to.equal(1);
         });
 
         it('seeds the bracket by player value when sorting is set', () => {

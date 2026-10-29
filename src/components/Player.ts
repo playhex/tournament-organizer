@@ -35,10 +35,21 @@ export class Player {
         this.meta = {};
     }
 
-    /** Set information about the player (only changes in information need to be included in the object). */
+    /**
+     * Set information about the player (only changes in information need to be included in the object).
+     *
+     * Matches already in the player's record are updated, other ones are added.
+     */
     set values(options: SettablePlayerValues) {
         if (options.matches !== undefined) {
-            options.matches = [...this.matches, ...options.matches];
+            const newMatches = options.matches.filter(match => {
+                if (this.matches.some(m => m.id === match.id)) {
+                    this.updateMatch(match.id, match);
+                    return false;
+                }
+                return true;
+            });
+            options.matches = [...this.matches, ...newMatches];
         }
         Object.assign(this, options);
     }

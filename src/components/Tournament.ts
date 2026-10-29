@@ -140,13 +140,52 @@ export class Tournament {
         }
     }
 
-    /** Set tournament options (only changes in options need to be included in the object) */
+    /**
+     * Set tournament options (only changes in options need to be included in the object)
+     *
+     * Players and matches already in the tournament (same ID) are updated, other ones are added.
+     */
     set settings(options: SettableTournamentValues) {
         if (options.players !== undefined) {
-            options.players = [...this.players, ...options.players];
+            const newPlayers = options.players.filter(player => {
+                const existingPlayer = this.players.find(p => p.id === player.id);
+                if (existingPlayer === undefined) {
+                    return true;
+                }
+                if (existingPlayer !== player) {
+                    existingPlayer.values = {
+                        name: player.name,
+                        active: player.active,
+                        value: player.value,
+                        matches: player.matches,
+                        meta: player.meta
+                    };
+                }
+                return false;
+            });
+            options.players = [...this.players, ...newPlayers];
         }
         if (options.matches !== undefined) {
-            options.matches = [...this.matches, ...options.matches];
+            const newMatches = options.matches.filter(match => {
+                const existingMatch = this.matches.find(m => m.id === match.id);
+                if (existingMatch === undefined) {
+                    return true;
+                }
+                if (existingMatch !== match) {
+                    existingMatch.values = {
+                        round: match.round,
+                        match: match.match,
+                        active: match.active,
+                        bye: match.bye,
+                        player1: { ...match.player1 },
+                        player2: { ...match.player2 },
+                        path: { ...match.path },
+                        meta: match.meta
+                    };
+                }
+                return false;
+            });
+            options.matches = [...this.matches, ...newMatches];
         }
         if (options.hasOwnProperty('scoring')) {
             options.scoring = Object.assign(this.scoring, options.scoring);

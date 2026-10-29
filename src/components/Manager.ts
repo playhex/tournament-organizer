@@ -66,7 +66,7 @@ export class Manager {
                 meta: player.meta
             }
         });
-        tourney.matches.forEach(match => {
+        const matches = tourney.matches.map(match => {
             const newMatch = new Match(match.id, match.round, match.match);
             newMatch.values = {
                 active: match.active,
@@ -76,9 +76,10 @@ export class Manager {
                 path: match.path,
                 meta: match.meta
             }
-            tournament.matches.push(newMatch);
+            return newMatch;
         });
         tournament.settings = {
+            matches,
             status: tourney.status
         };
         this.tournaments.push(tournament);
