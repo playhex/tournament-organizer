@@ -18,8 +18,16 @@ For non-elimination tournaments, the following tiebreaker systems are supported 
 * Solkoff
 * Median-Buchholz
 * Sonneborn-Berger
+* Koya System
 * Cumulative
+* Earned match wins
+* Earned match losses
+* Earned game wins
+* Earned game losses
+* Game win differential
+* Neighborhood record
 * Versus
+* Mutual versus
 * Opponent's match win percentage
 * Game win percentage
 * Opponent's game win percentage
@@ -53,6 +61,8 @@ Changes made in this fork since [tournament-organizer 3.9.1](https://github.com/
   which is played only if the player coming from the losers bracket wins the grand final.
   If the winners bracket champion wins the grand final, the reset is not played and the tournament can end.
   This changes the bracket structure for every player count: one more match, and losers bracket rounds are shifted by one.
+- Tiebreakers: `koya system`, `earned match wins`, `earned match losses`, `earned game wins`,
+  `earned game losses`, `game win differential`, `neighborhood record`, `mutual versus`.
 - Tests (mocha + chai): `npm test`.
 
 ### Fixed / changed

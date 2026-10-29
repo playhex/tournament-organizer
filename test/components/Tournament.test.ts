@@ -2,6 +2,9 @@ import { expect } from 'chai';
 import { Match } from '../../src/components/Match.js';
 import { Player } from '../../src/components/Player.js';
 import { Tournament } from '../../src/components/Tournament.js';
+import type { SettableTournamentValues } from '../../src/interfaces/SettableTournamentValues.js';
+import type { StandingsValues } from '../../src/interfaces/StandingsValues.js';
+import type { TournamentValues } from '../../src/interfaces/TournamentValues.js';
 import { thrown } from '../helpers.js';
 
 const withPlayers = (count: number, settings = {}): Tournament => {
@@ -907,6 +910,86 @@ describe('Tournament', () => {
                 expect(standing.tiebreaks.solkoff).to.equal(opponentPoints);
             });
             expect(standings.every(s => s.tiebreaks.matchWinPct === s.matchPoints / (s.matches * 3))).to.equal(true);
+        });
+
+        /**
+         * Round robin where p1 and p2 finish 2-1, p3 and p4 finish 1-2:
+         * p1 beats p2 and p3, p2 beats p3 and p4, p3 beats p4, p4 beats p1.
+         */
+        const playRoundRobin = (tiebreaks: SettableTournamentValues['scoring'] = {}): Tournament => {
+            const tournament = withPlayers(4, {
+                stageOne: { format: 'round-robin' },
+                scoring: { win: 3, draw: 1, loss: 0, ...tiebreaks }
+            });
+            tournament.start();
+            const winners: { [pair: string]: string } = {
+                'p1,p2': 'p1',
+                'p1,p3': 'p1',
+                'p1,p4': 'p4',
+                'p2,p3': 'p2',
+                'p2,p4': 'p2',
+                'p3,p4': 'p3'
+            };
+            tournament.matches.filter(m => m.active === true).forEach(match => {
+                const winner = winners[[match.player1.id, match.player2.id].sort().join(',')];
+                tournament.enterResult(match.id, match.player1.id === winner ? 1 : 0, match.player1.id === winner ? 0 : 1);
+            });
+            return tournament;
+        };
+
+        const tiebreaksOf = (tournament: Tournament, id: string): StandingsValues['tiebreaks'] => {
+            return tournament.standings(false).find(s => s.player.id === id)!.tiebreaks;
+        };
+
+        it('computes earned wins and losses', () => {
+            const tournament = playRoundRobin();
+            expect(['p1', 'p2', 'p3', 'p4'].map(id => tiebreaksOf(tournament, id).earnedMatchWins)).to.deep.equal([2, 2, 1, 1]);
+            expect(['p1', 'p2', 'p3', 'p4'].map(id => tiebreaksOf(tournament, id).earnedMatchLosses)).to.deep.equal([-1, -1, -2, -2]);
+            expect(['p1', 'p2', 'p3', 'p4'].map(id => tiebreaksOf(tournament, id).gameWinDifferential)).to.deep.equal([1, 1, -1, -1]);
+        });
+
+        it('computes earned games and game win differential in best of three', () => {
+            const tournament = withPlayers(2, {
+                stageOne: { format: 'round-robin' },
+                scoring: { bestOf: 3 }
+            });
+            tournament.start();
+            tournament.enterResult(tournament.matches[0].id, 2, 1);
+            const winner = tournament.matches[0].player1.id!;
+            const loser = tournament.matches[0].player2.id!;
+            expect(tiebreaksOf(tournament, winner)).to.include({ earnedGameWins: 2, earnedGameLosses: -1, gameWinDifferential: 1 });
+            expect(tiebreaksOf(tournament, loser)).to.include({ earnedGameWins: 1, earnedGameLosses: -2, gameWinDifferential: -1 });
+        });
+
+        it('does not count byes as earned wins', () => {
+            const tournament = withPlayers(3, { stageOne: { format: 'round-robin' } });
+            tournament.start();
+            playRound(tournament);
+            const standings = tournament.standings(false);
+            standings.forEach(standing => {
+                const byes = standing.player.matches.filter(m => m.bye).length;
+                expect(standing.tiebreaks.earnedMatchWins).to.equal(standing.player.matches.filter(m => !m.bye && m.win > m.loss).length);
+                expect(byes).to.equal(1);
+            });
+        });
+
+        it('computes Koya System score against opponents with at least half the maximum points', () => {
+            const tournament = playRoundRobin();
+            // Only p1 and p2 have at least half the 9 maximum points.
+            expect(['p1', 'p2', 'p3', 'p4'].map(id => tiebreaksOf(tournament, id).koyaSystem)).to.deep.equal([3, 0, 0, 3]);
+        });
+
+        it('computes neighborhood record against opponents with the same points', () => {
+            const tournament = playRoundRobin();
+            expect(['p1', 'p2', 'p3', 'p4'].map(id => tiebreaksOf(tournament, id).neighborhoodRecord)).to.deep.equal([1, -1, 1, -1]);
+        });
+
+        it('ranks tied players with the new tiebreaks', () => {
+            const ranking = (tiebreaks: TournamentValues['scoring']['tiebreaks']) => playRoundRobin({ tiebreaks }).standings(false).map(s => s.player.id);
+            expect(ranking(['koya system'])).to.deep.equal(['p1', 'p2', 'p4', 'p3']);
+            expect(ranking(['neighborhood record'])).to.deep.equal(['p1', 'p2', 'p3', 'p4']);
+            // p2 beat both shared opponents p3 and p4, p1 only beat p3
+            expect(ranking(['mutual versus']).slice(0, 2)).to.deep.equal(['p2', 'p1']);
         });
     });
 

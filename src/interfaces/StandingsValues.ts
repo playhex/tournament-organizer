@@ -41,6 +41,11 @@ export interface StandingsValues {
          */
         sonnebornBerger: number,
         /**
+         * A player's Koya System score:
+         * match points earned against opponents who have at least half the maximum number of match points.
+         */
+        koyaSystem: number,
+        /**
          * A player's cumulative score.
          */
         cumulative: number,
@@ -48,6 +53,30 @@ export interface StandingsValues {
          * A player's cumulative opponent's score.
          */
         oppCumulative: number,
+        /**
+         * Number of matches won against opponents (byes excluded).
+         */
+        earnedMatchWins: number,
+        /**
+         * Number of matches lost against opponents (byes excluded), as a negative number.
+         */
+        earnedMatchLosses: number,
+        /**
+         * Number of games won against opponents (byes excluded).
+         */
+        earnedGameWins: number,
+        /**
+         * Number of games lost against opponents (byes excluded), as a negative number.
+         */
+        earnedGameLosses: number,
+        /**
+         * Difference between games won and games lost against opponents (byes excluded).
+         */
+        gameWinDifferential: number,
+        /**
+         * Record (wins minus losses) against opponents who have the same number of match points as the player.
+         */
+        neighborhoodRecord: number,
         /**
          * A player's match win percentage.
          */
