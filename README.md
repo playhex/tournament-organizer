@@ -52,8 +52,6 @@ Changes made in this fork since [tournament-organizer 3.9.1](https://github.com/
   Swiss pairings use [`edmonds-blossom-fixed`](https://www.npmjs.com/package/edmonds-blossom-fixed).
 - `types` field fixed (`./dist/index.d.ts` instead of `./dist/index.d.js`).
 - `prepare` script, so that installing from git builds `dist/`.
-- Built with `tsc` only: no more rollup browser (`dist/index.module.js`) and UMD (`dist/index.umd.js`) bundles.
-  Use a bundler, or a CDN that bundles ES modules like [esm.sh](https://esm.sh).
 
 ### Added
 - Double elimination with 2 or 3 players (the original requires at least 4).
@@ -61,8 +59,6 @@ Changes made in this fork since [tournament-organizer 3.9.1](https://github.com/
   which is played only if the player coming from the losers bracket wins the grand final.
   If the winners bracket champion wins the grand final, the reset is not played and the tournament can end.
   This changes the bracket structure for every player count: one more match, and losers bracket rounds are shifted by one.
-- Tiebreakers: `koya system`, `earned match wins`, `earned match losses`, `earned game wins`,
-  `earned game losses`, `game win differential`, `neighborhood record`, `mutual versus`.
 - Tests (mocha + chai): `npm test`.
 
 ### Fixed / changed
@@ -73,6 +69,17 @@ Changes made in this fork since [tournament-organizer 3.9.1](https://github.com/
 - Round robin: removing a player turns all their active matches into byes for their opponents (not only matches of next rounds).
 - Strict TypeScript fixes: missing players or matches now throw an explicit error (e.g `Player with ID ... does not exist`)
   instead of failing later with `Cannot read properties of undefined`.
+
+### Ported
+Features of later versions of the original library:
+- New tiebreakers: `koya system`, `earned match wins`, `earned match losses`, `earned game wins`,
+  `earned game losses`, `game win differential`, `neighborhood record`, `mutual versus`.
+- `enterResult()` and `clearResult()` return the matches they updated.
+- Setting `players` or `matches` (`tournament.settings = { players }`, `player.values = { matches }`)
+  updates the ones already there (same ID) instead of duplicating them.
+- Generated IDs are UUIDs from `crypto.randomUUID()` instead of `randomstring`, requires Node.js 19 or later.
+- Built with `tsc` only: no more rollup browser (`dist/index.module.js`) and UMD (`dist/index.umd.js`) bundles.
+  Use a bundler, or a CDN that bundles ES modules like [esm.sh](https://esm.sh).
 
 ## Contributing
 Please submit an issue or a pull request on [playhex/tournament-organizer](https://github.com/playhex/tournament-organizer) (on main branch) if you encounter a bug in this fork.
