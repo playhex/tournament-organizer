@@ -984,6 +984,19 @@ describe('Tournament', () => {
             expect(['p1', 'p2', 'p3', 'p4'].map(id => tiebreaksOf(tournament, id).neighborhoodRecord)).to.deep.equal([1, -1, 1, -1]);
         });
 
+        it('computes Sonneborn-Berger from beaten opponents only', () => {
+            const tournament = playRoundRobin();
+            // p1 beat p2 (6) and p3 (3), p2 beat p3 (3) and p4 (3), p3 beat p4 (3), p4 beat p1 (6)
+            expect(['p1', 'p2', 'p3', 'p4'].map(id => tiebreaksOf(tournament, id).sonnebornBerger)).to.deep.equal([9, 6, 3, 6]);
+        });
+
+        it('counts half of the opponent points in Sonneborn-Berger for a draw', () => {
+            const tournament = withPlayers(2, { stageOne: { format: 'round-robin' } });
+            tournament.start();
+            tournament.enterResult(tournament.matches[0].id, 0, 0, 1);
+            expect(['p1', 'p2'].map(id => tiebreaksOf(tournament, id).sonnebornBerger)).to.deep.equal([0.25, 0.25]);
+        });
+
         it('ranks tied players with the new tiebreaks', () => {
             const ranking = (tiebreaks: TournamentValues['scoring']['tiebreaks']) => playRoundRobin({ tiebreaks }).standings(false).map(s => s.player.id);
             expect(ranking(['koya system'])).to.deep.equal(['p1', 'p2', 'p4', 'p3']);

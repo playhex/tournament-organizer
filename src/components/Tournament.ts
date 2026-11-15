@@ -472,7 +472,7 @@ export class Tournament {
                 if (this.#match(match.id).active === true) {
                     return sum;
                 }
-                return match.win > match.loss ? sum + opp.matchPoints : sum + (0.5 * opp.matchPoints);
+                return match.win > match.loss ? sum + opp.matchPoints : match.win < match.loss ? sum : sum + (0.5 * opp.matchPoints);
             }, 0);
             player.tiebreaks.koyaSystem = opponents
                 .filter(opp => opp.matchPoints >= 0.5 * this.scoring.win * opp.matches)
