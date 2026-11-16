@@ -2,6 +2,7 @@ import { Player } from '../components/Player.js';
 import { Match } from '../components/Match.js';
 import { Tournament } from '../components/Tournament.js';
 import { TournamentValues } from './TournamentValues.js';
+import type { SwissPairing } from '../pairings/Swiss.js';
 
 /**
  * All properties that can be set with {@link Tournament.settings}.
@@ -47,7 +48,8 @@ export interface SettableTournamentValues {
         consolation?: boolean,
         rounds?: number,
         initialRound?: number,
-        maxPlayers?: number
+        maxPlayers?: number,
+        swissPairing?: SwissPairing
     },
     stageTwo?: {
         format?: 'single-elimination' | 'double-elimination' | 'stepladder' | null,

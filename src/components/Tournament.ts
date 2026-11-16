@@ -75,7 +75,8 @@ export class Tournament {
             consolation: false,
             rounds: 0,
             initialRound: 1,
-            maxPlayers: 0
+            maxPlayers: 0,
+            swissPairing: 'slide'
         };
         this.stageTwo = {
             format: null,
@@ -312,7 +313,7 @@ export class Tournament {
                         seating: player.matches.map(match => match.seating).filter(seat => seat !== null),
                         rating: player.value
                     }));
-                    matches = Pairings.Swiss(playerArray, this.round, this.sorting !== 'none', this.seating);
+                    matches = Pairings.Swiss(playerArray, this.round, this.sorting !== 'none', this.seating, this.stageOne.swissPairing);
                     matches.forEach(match => {
                         if (match.player1 === null) {
                             throw `Swiss pairings returned a match without a first player`;

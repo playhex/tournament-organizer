@@ -12,10 +12,18 @@ export interface Player {
     rating?: number | null
 }
 
+/**
+ * How players of a same score group are paired, when rated, from their rating rank in the group:
+ * - `slide`: top half against bottom half, 1-5, 2-6, 3-7, 4-8 (Dutch system).
+ * - `fold`: best against worst, 1-8, 2-7, 3-6, 4-5.
+ * - `adjacent`: players with closest ratings, 1-2, 3-4, 5-6, 7-8 (Monrad system).
+ */
+export type SwissPairing = 'slide' | 'fold' | 'adjacent';
+
 /** A player with the index it occupies in the matching graph handed to the blossom algorithm. */
 type IndexedPlayer = Player & { index: number };
 
-export function Swiss(players: Player[], round: number, rated: boolean = false, seating: boolean = false) : Match[] {
+export function Swiss(players: Player[], round: number, rated: boolean = false, seating: boolean = false, pairing: SwissPairing = 'slide') : Match[] {
     const matches: Match[] = [];
     if (rated) {
         players.filter(p => !p.hasOwnProperty('rating') || p.rating === null).forEach(p => p.rating = 0);
@@ -42,11 +50,49 @@ export function Swiss(players: Player[], round: number, rated: boolean = false, 
         }
         return sums;
     }).flat())].sort((a, b) => a - b);
+    const groupRanks = new Map<number, number>();
+    const groupSizes = new Map<number, number>();
+    const byeAversions = new Map<number, number>();
+    if (rated) {
+        // From the highest score group: when there is an odd number of players above a group,
+        // the lowest of them is expected to float down and be seeded first in this group.
+        let above = 0;
+        [...scoreGroups].reverse().forEach(score => {
+            const group = playerArray.filter(p => p.score === score).sort((a, b) => ratingOf(b) - ratingOf(a));
+            const incoming = above % 2;
+            groupSizes.set(score, group.length + incoming);
+            group.forEach((p, rank) => {
+                groupRanks.set(p.index, rank + incoming);
+                // 0 for the lowest player of the lowest score group, so it is the one left for the bye.
+                byeAversions.set(p.index, 1 - 1 / (playerArray.length - above - rank));
+            });
+            above += group.length;
+        });
+    }
+    /**
+     * How far a pair is from the ideal pairing, 0 being ideal.
+     * A player paired with a lower score group is expected to be the lowest of its group (penalized otherwise),
+     * and is seeded first in the lower group.
+     * In a group with an odd number of players, the lowest one is expected to float down or get the bye,
+     * so the others are paired as if it were not there.
+     */
+    const seedingDeviation = (a: IndexedPlayer, b: IndexedPlayer): number => {
+        const [high, low] = a.score >= b.score ? [a, b] : [b, a];
+        const cross = high.score !== low.score;
+        const floaterPenalty = cross ? (groupSizes.get(high.score) ?? 0) - 1 - (groupRanks.get(high.index) ?? 0) : 0;
+        const rankHigh = cross ? 0 : groupRanks.get(high.index) ?? 0;
+        const rankLow = groupRanks.get(low.index) ?? 0;
+        const half = Math.floor((groupSizes.get(low.score) ?? 0) / 2);
+        const deviation = pairing === 'fold' ? Math.abs(rankHigh + rankLow - (2 * half - 1))
+            : pairing === 'adjacent' ? Math.abs(rankHigh - rankLow) - 1
+            : Math.abs(Math.abs(rankHigh - rankLow) - half)
+        ;
+        return floaterPenalty + deviation;
+    };
     const pairs: number[][] = [];
     for (let i = 0; i < playerArray.length; i++) {
         const curr = playerArray[i];
         const next = playerArray.slice(i + 1);
-        const sorted = rated ? [...next].sort((a, b) => Math.abs(ratingOf(curr) - ratingOf(a)) - Math.abs(ratingOf(curr) - ratingOf(b))) : [];
         for (let j = 0; j < next.length; j++) {
             const opp = next[j];
             if (curr.avoid?.includes(opp.id)) {
@@ -62,7 +108,9 @@ export function Swiss(players: Player[], round: number, rated: boolean = false, 
             }
             wt += 23 / (2 *(scoreGroupDiff + 2));
             if (rated) {
-                wt += 4 / (sorted.findIndex(p => p.id === opp.id) + 2);
+                wt += 4 / (seedingDeviation(curr, opp) + 2);
+                // Every paired player adds its aversion once, so this only decides who gets the bye: the lowest seed.
+                wt += 2 * ((byeAversions.get(curr.index) ?? 0) + (byeAversions.get(opp.index) ?? 0));
             }
             if (seating) {
                 let seatingDiff = Math.abs(seatingOf(curr).reduce((sum: number, seat) => sum + seat, 0) - seatingOf(opp).reduce((sum: number, seat) => sum + seat, 0));

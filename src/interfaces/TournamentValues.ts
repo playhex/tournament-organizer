@@ -1,5 +1,6 @@
 import { Player } from '../components/Player.js';
 import { Match } from '../components/Match.js';
+import type { SwissPairing } from '../pairings/Swiss.js';
 
 /**
  * Properties of tournaments
@@ -120,7 +121,8 @@ export interface TournamentValues {
      *     consolation: false,
      *     rounds: 0,
      *     initialRound: 1,
-     *     maxPlayers: 0
+     *     maxPlayers: 0,
+     *     swissPairing: 'slide'
      * }
      * ```
      */
@@ -144,7 +146,11 @@ export interface TournamentValues {
         /**
          * Maximum number of players who can be enrolled. There is no maximum if this is zero.
          */
-        maxPlayers: number
+        maxPlayers: number,
+        /**
+         * How players of a same score group are paired in Swiss, when `sorting` is not `'none'`. See {@link SwissPairing}.
+         */
+        swissPairing: SwissPairing
     },
     /**
      * Details about the second stage of the tournament.

@@ -261,6 +261,38 @@ describe('Tournament', () => {
             tournament.start();
             expect(tournament.matches.filter(m => m.bye === true)).to.have.lengthOf(1);
         });
+
+        /** Round 1 pairs of 8 players, p1 having the highest value. */
+        const round1Pairs = (settings: SettableTournamentValues): string[] => {
+            const tournament = withPlayers(8, { sorting: 'descending', ...settings });
+            tournament.players.forEach((player, i) => player.values = { value: 2000 - 100 * i });
+            tournament.start();
+            return tournament.matches
+                .map(m => [m.player1.id, m.player2.id].sort().join('-'))
+                .sort()
+            ;
+        };
+
+        it('uses swissPairing option', () => {
+            expect(round1Pairs({ stageOne: { format: 'swiss', swissPairing: 'fold' } })).to.deep.equal(['p1-p8', 'p2-p7', 'p3-p6', 'p4-p5']);
+        });
+
+        it('never pairs the same players twice', () => {
+            for (const swissPairing of ['slide', 'fold', 'adjacent'] as const) {
+                const tournament = withPlayers(11, { sorting: 'descending', seating: true, stageOne: { format: 'swiss', rounds: 6, swissPairing } });
+                tournament.players.forEach((player, i) => player.values = { value: 2000 - 100 * i });
+                tournament.start();
+                for (let round = 1; round < 6; round++) {
+                    tournament.matches.filter(m => m.active === true).forEach((m, i) => tournament.enterResult(m.id, (i + round) % 2, 0, 0));
+                    tournament.matches.filter(m => m.active === true).forEach(m => tournament.enterResult(m.id, 0, 0, 1));
+                    tournament.next();
+                }
+                const pairs = tournament.matches.filter(m => m.player2.id !== null).map(m => [m.player1.id, m.player2.id].sort().join('-'));
+                expect(new Set(pairs).size).to.equal(pairs.length);
+                const byes = tournament.matches.filter(m => m.bye === true).map(m => m.player1.id);
+                expect(new Set(byes).size).to.equal(byes.length);
+            }
+        });
     });
 
     describe('settings', () => {

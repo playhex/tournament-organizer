@@ -73,6 +73,10 @@ Changes made in this fork since [tournament-organizer 3.9.1](https://github.com/
   Player scores are updated as soon as a match ends, even for a match of a later round.
   Advancing to next round is only blocked by active matches of the current round.
 - Round robin: removing a player turns all their active matches into byes for their opponents (not only matches of next rounds).
+- Swiss with `sorting`: players of a same score group are paired **top half against bottom half** (1-5, 2-6, 3-7, 4-8, Dutch system)
+  instead of against players with close values (1-2, 3-4, Monrad system).
+  Configurable with `stageOne.swissPairing`: `'slide'` (default), `'fold'` or `'adjacent'`, see [Swiss seeding](#seeding-1).
+  The bye goes to the lowest seed, and the lowest player of an odd score group is the one paired with the next group.
 - Strict TypeScript fixes: missing players or matches now throw an explicit error (e.g `Player with ID ... does not exist`)
   instead of failing later with `Cannot read properties of undefined`.
 
@@ -468,19 +472,30 @@ const tournament = manager.createTournament('My tournament', {
 ```
 
 #### Seeding
-With `sorting` and player values, players with the same score are preferably paired against players with a close value,
-instead of randomly.
+With `sorting` and player values, players of a same score group are paired depending on their seed in the group, instead of randomly.
+With 8 players in a score group:
+
+| `swissPairing` | Pairs | |
+|---|---|---|
+| `'slide'` (default) | 1-5, 2-6, 3-7, 4-8 | Top half against bottom half (Dutch system): strongest players meet in last rounds |
+| `'fold'` | 1-8, 2-7, 3-6, 4-5 | Best against worst |
+| `'adjacent'` | 1-2, 3-4, 5-6, 7-8 | Closest values (Monrad system) |
 
 ```ts
 const tournament = manager.createTournament('My tournament', {
     stageOne: {
         format: 'swiss',
+        swissPairing: 'slide', // default
     },
-    sorting: 'descending', // pair players with close values instead of randomly
+    sorting: 'descending', // highest value is first seed
 });
 
 tournament.createPlayer('Alice').values = { value: 2100 };
 ```
+
+The bye goes to the lowest seed. In a score group with an odd number of players, the lowest seed is paired with the next score group,
+where it is seeded first.
+These are preferences: avoiding rematches, score groups and seating come first.
 
 #### Seating
 When player order matters (white/black, first player...), pairings balance how many times each player is player1 and player2,
@@ -668,7 +683,7 @@ Swiss([
         seating: [1, -1], // previous sides (1: player1, -1: player2), used when seating is true
     },
     // ...
-], 3, true, true); // round number, rated, seating
+], 3, true, true, 'slide'); // round number, rated, seating, pairing ('slide', 'fold' or 'adjacent', see Swiss seeding)
 ```
 
 ## Contributing
