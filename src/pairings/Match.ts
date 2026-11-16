@@ -14,4 +14,4 @@ export interface Match {
         round: number,
         match: number
     }
-}
+}

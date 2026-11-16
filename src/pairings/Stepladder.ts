@@ -26,4 +26,4 @@ export function Stepladder(players: number | string[], startingRound: number = 1
         matches.push(match);
     }
     return matches;
-}
+}

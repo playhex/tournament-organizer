@@ -56,4 +56,4 @@ export function RoundRobin(players: number | string[], startingRound: number = 1
         matches = [...matches, ...round];
     }
     return matches;
-}
+}

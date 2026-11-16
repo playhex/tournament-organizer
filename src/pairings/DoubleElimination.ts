@@ -332,4 +332,4 @@ export function DoubleElimination(players: number | string[], startingRound: num
     grandFinal.loss = { ...reset };
     matches.push({ ...reset, player1: null, player2: null });
     return matches;
-}
+}
