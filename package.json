@@ -1,6 +1,6 @@
 {
   "name": "@playhex/tournament-organizer",
-  "version": "3.11.1",
+  "version": "3.12.0",
   "description": "JavaScript library for running tournaments (PlayHex fork of tournament-organizer)",
   "exports": {
     ".": "./dist/index.js",
